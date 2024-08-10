@@ -5,7 +5,7 @@ const commentsRouter = require("./routes/comments");
 
 const corsOptions = {
   origin: "http://localhost:3000",
-  methods: "GET,HEAD,POST,PUT,DELETE,OPTIONS",
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: "Content-Type",
 };
 

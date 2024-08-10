@@ -1,10 +1,15 @@
-// server.js
 const express = require("express");
 const cors = require("cors");
 const app = express();
 const commentsRouter = require("./routes/comments");
 
-app.use(cors());
+const corsOptions = {
+  origin: "http://localhost:3000",
+  methods: "GET,HEAD,POST,PUT,DELETE,OPTIONS",
+  allowedHeaders: "Content-Type",
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use("/comments", commentsRouter);
 

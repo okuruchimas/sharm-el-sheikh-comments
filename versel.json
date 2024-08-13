@@ -6,10 +6,9 @@
       "use": "@vercel/node"
     }
   ],
-
   "routes": [
     {
-      "src": "/(.*)",
+      "src": "/comments(.*)",
       "dest": "/server.js"
     }
   ]

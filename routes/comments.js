@@ -15,7 +15,7 @@ router.post("/", async (req, res) => {
     const db = client.db("commentsDB");
     const placesCollection = db.collection("companies");
 
-    const comment = {
+    const newComment = {
       _id: new ObjectId().toString(),
       rating,
       text,
@@ -23,16 +23,64 @@ router.post("/", async (req, res) => {
       date: new Date(),
     };
 
-    const result = await placesCollection.updateOne(
+    let place = await placesCollection.findOne({ placeId });
+
+    let newAverageRating;
+    let newTotalComments;
+
+    if (place) {
+      const existingCommentIndex = place.comments.findIndex(
+        (comment) => comment.email === email,
+      );
+
+      if (existingCommentIndex !== -1) {
+        place.comments[existingCommentIndex] = newComment;
+      } else {
+        place.comments.push(newComment);
+      }
+
+      newTotalComments = place.comments.length;
+      const totalRating = place.comments.reduce(
+        (sum, comment) => sum + comment.rating,
+        0,
+      );
+      newAverageRating = totalRating / newTotalComments;
+    } else {
+      newTotalComments = 1;
+      newAverageRating = rating;
+      place = {
+        placeId,
+        comments: [newComment],
+      };
+    }
+
+    await placesCollection.updateOne(
       { placeId },
       {
         $setOnInsert: { placeId },
-        $push: { comments: comment },
+        $set: {
+          comments: place.comments,
+          averageRating: newAverageRating,
+          totalComments: newTotalComments,
+        },
       },
       { upsert: true },
     );
 
-    res.status(201).json(comment);
+    const updatedPlace = await placesCollection.findOne(
+      { placeId },
+      { projection: { comments: 1 } },
+    );
+
+    const commentsWithoutEmail = updatedPlace.comments.map(
+      ({ email, ...rest }) => rest,
+    );
+
+    res.status(201).json({
+      comments: commentsWithoutEmail,
+      averageRating: newAverageRating,
+      totalComments: newTotalComments,
+    });
   } catch (error) {
     console.error("Error adding comment:", error);
     res.status(500).json({ error: "Failed to add comment" });
@@ -49,14 +97,22 @@ router.get("/:placeId", async (req, res) => {
 
     const place = await placesCollection.findOne(
       { placeId },
-      { projection: { comments: 1 } },
+      { projection: { comments: 1, averageRating: 1, totalComments: 1 } },
     );
 
     if (!place) {
       return res.status(404).json({ error: "Place not found" });
     }
 
-    res.status(200).json(place.comments);
+    const commentsWithoutEmail = place.comments.map(
+      ({ email, ...rest }) => rest,
+    );
+
+    res.status(200).json({
+      comments: commentsWithoutEmail,
+      averageRating: place.averageRating,
+      totalComments: place.totalComments,
+    });
   } catch (error) {
     console.error("Error getting comments:", error);
     res.status(500).json({ error: "Failed to get comments" });
